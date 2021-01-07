@@ -11,33 +11,34 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Crawler {
-    private static final int URL_LIMIT = 10000;
+    private static final int URL_LIMIT = 100;
 
     public static Queue<String> queue = new LinkedList<>();
-    public static Set<String> marked = new HashSet<>();
+    public static Map<String, Integer> marked = new HashMap<>();
 
-    public static String regex = "\\b(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
+    public static String regex = "\\b(https?|ftp)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
 
     public static String[] terms = new String[]{"Java", "regex", "java", "Regex"};
     public static Map<String, Integer> termMap = new HashMap<>();
-
-    public static void crawl(String root) throws IOException {
-        queue.add(root);
+    static int i = 1;
+    public static void crawl(String urlToCrawl) throws IOException {
+        queue.add(urlToCrawl);
+        marked.put(urlToCrawl, 1);
         BufferedReader br = null;
 
-        int i = 1;
         while (!queue.isEmpty()) {
+            i++;
             String crawledUrl = queue.poll();
-            System.out.println("\n=== Site crawled : " + marked.size() +" "+ crawledUrl  + " ===" );
+            System.out.println("\n=== Site crawled : " + crawledUrl + " ===");
 
-            if (marked.size() > URL_LIMIT)
+            if (i > URL_LIMIT)
                 return;
             boolean ok = false;
             URL url = null;
             while (!ok) {
                 try {
                     url = new URL(crawledUrl);
-                    url.openConnection().setConnectTimeout(3000);
+//                    url.openConnection().setConnectTimeout(3000);
                     br = new BufferedReader(new InputStreamReader(url.openStream()));
                     ok = true;
                 } catch (SocketTimeoutException e) {
@@ -64,8 +65,20 @@ public class Crawler {
             tmp = sb.toString();
 
             searchTerms(tmp, terms);
-            searchUrls(tmp, regex);
-
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(tmp);
+            while (matcher.find()) {
+                String urlToFind = matcher.group();
+                if ((urlToFind.contains(".png")) || urlToFind.contains(".js") || urlToFind.contains(".jpeg") ||
+                        urlToFind.contains(".css") || urlToFind.contains(".jpg") || urlToFind.contains(".xml") || urlToFind.contains(".dtd")) {
+                    continue;
+                }
+                if (!marked.containsKey(urlToFind)) {
+                    marked.put(urlToFind, marked.get(urlToCrawl) + 1);
+                    System.out.println("site added :" + urlToFind);
+                    queue.add(urlToFind);
+                }
+            }
         }
         if (br != null) {
             br.close();
@@ -73,35 +86,21 @@ public class Crawler {
     }
 
     public static void showResults() {
-//        System.out.println("\n\nResults");
-//        System.out.println("web sites crawled: " + marked.size() + "\n");
-
-        for (String s : marked) {
-            System.out.println("* " + s);
-        }
+        System.out.println("\n\nResults");
+        System.out.println("web sites crawled: " + marked.size() + "\n");
+        System.out.println("url visited " + i);
+//        for (String s : marked) {
+//            System.out.println("* " + s);
+//        }
         for (Map.Entry<String, Integer> entry : termMap.entrySet()
         ) {
             System.out.println(entry.getKey() + "\t\t\t" + entry.getValue());
         }
     }
 
-    public static void searchUrls(String text, String regex) {
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(text);
-        while (matcher.find()) {
-            String w = matcher.group();
-            if ((w.contains(".png")) || w.contains(".js") || w.contains(".jpeg") ||
-                    w.contains(".css") || w.contains(".jpg") || w.contains(".xml") || w.contains(".dtd")) {
-                continue;
-            }
-            if (!marked.contains(w)) {
-                marked.add(w);
-                //todo увеличение счетчика глубины
-                System.out.println("site added :" + w);
-                queue.add(w);
-            }
-        }
-    }
+//    public static void searchUrls(String text, String regex) {
+//
+//    }
 
     public static void searchTerms(String text, String[] terms) {
         for (String term : terms
