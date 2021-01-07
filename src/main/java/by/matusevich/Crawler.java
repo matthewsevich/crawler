@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 
 public class Crawler {
     private static final int URL_LIMIT = 100;
+    private static final int DEPTH_LIMIT = 3;
 
     public static Queue<String> queue = new LinkedList<>();
     public static Map<String, Integer> marked = new HashMap<>();
@@ -20,24 +21,23 @@ public class Crawler {
 
     public static String[] terms = new String[]{"Java", "regex", "java", "Regex"};
     public static Map<String, Integer> termMap = new HashMap<>();
-    static int i = 1;
+
+    static int crawledCount = 0;
+
     public static void crawl(String urlToCrawl) throws IOException {
         queue.add(urlToCrawl);
         marked.put(urlToCrawl, 1);
         BufferedReader br = null;
 
-        while (!queue.isEmpty()) {
-            i++;
+        while (!queue.isEmpty() && crawledCount <= URL_LIMIT) {
+            crawledCount++;
             String crawledUrl = queue.poll();
-            System.out.println("\n=== Site crawled : " + crawledUrl + " ===");
+            System.out.println("\n=== Site crawled on level: " + crawledUrl + " ===");
 
-            if (i > URL_LIMIT)
-                return;
             boolean ok = false;
-            URL url = null;
             while (!ok) {
                 try {
-                    url = new URL(crawledUrl);
+                    URL url = new URL(crawledUrl);
 //                    url.openConnection().setConnectTimeout(3000);
                     br = new BufferedReader(new InputStreamReader(url.openStream()));
                     ok = true;
@@ -65,6 +65,11 @@ public class Crawler {
             tmp = sb.toString();
 
             searchTerms(tmp, terms);
+
+            if (marked.get(crawledUrl) == DEPTH_LIMIT) {
+                System.out.println("limit");
+                continue;
+            }
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(tmp);
             while (matcher.find()) {
@@ -74,7 +79,8 @@ public class Crawler {
                     continue;
                 }
                 if (!marked.containsKey(urlToFind)) {
-                    marked.put(urlToFind, marked.get(urlToCrawl) + 1);
+                    int level = marked.get(crawledUrl) + 1;
+                    marked.put(urlToFind, level);
                     System.out.println("site added :" + urlToFind);
                     queue.add(urlToFind);
                 }
@@ -88,7 +94,7 @@ public class Crawler {
     public static void showResults() {
         System.out.println("\n\nResults");
         System.out.println("web sites crawled: " + marked.size() + "\n");
-        System.out.println("url visited " + i);
+        System.out.println("url visited " + crawledCount);
 //        for (String s : marked) {
 //            System.out.println("* " + s);
 //        }
@@ -98,13 +104,8 @@ public class Crawler {
         }
     }
 
-//    public static void searchUrls(String text, String regex) {
-//
-//    }
-
     public static void searchTerms(String text, String[] terms) {
-        for (String term : terms
-        ) {
+        for (String term : terms) {
             Pattern pattern = Pattern.compile(term);
             Matcher matcher = pattern.matcher(text);
             while (matcher.find()) {
@@ -118,8 +119,11 @@ public class Crawler {
 
     public static void main(String[] args) {
         try {
+            long startTime = System.currentTimeMillis();
             crawl("https://www.javatpoint.com/java-regex");
 //            crawl("https://en.wikipedia.org/wiki/Elon_Musk");
+            long stopTime = System.currentTimeMillis();
+            System.out.println(stopTime - startTime);
         } catch (IOException e) {
             e.printStackTrace();
         }
