@@ -19,20 +19,20 @@ public class Crawler {
 
     public static String regex = "\\b(https?|ftp)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
 
-    public static String[] terms = new String[]{"Java", "regex", "java", "Regex"};
+    public static String[] terms = new String[]{"Java", "regex"};
     public static Map<String, Integer> termMap = new HashMap<>();
-
+    public static Map<Integer, String> amountOfTermPerUrl = new TreeMap<>();
     static int crawledCount = 0;
 
-    public static void crawl(String urlToCrawl) throws IOException {
-        queue.add(urlToCrawl);
-        marked.put(urlToCrawl, 1);
+    public static void crawl(String initialSeedUrl) throws IOException {
+        queue.add(initialSeedUrl);
+        marked.put(initialSeedUrl, 1);
         BufferedReader br = null;
 
         while (!queue.isEmpty() && crawledCount <= URL_LIMIT) {
             crawledCount++;
             String crawledUrl = queue.poll();
-            System.out.println("\n=== Site crawled on level: " + crawledUrl + " ===");
+            System.out.println("\n=== Site crawled on level: " + marked.get(crawledUrl) + " " + crawledUrl + " ===");
 
             boolean ok = false;
             while (!ok) {
@@ -64,24 +64,24 @@ public class Crawler {
             }
             tmp = sb.toString();
 
-            searchTerms(tmp, terms);
+            amountOfTermPerUrl.put(searchTerms(tmp, terms),crawledUrl);
 
             if (marked.get(crawledUrl) == DEPTH_LIMIT) {
-                System.out.println("limit");
+//                System.out.println("limit");
                 continue;
             }
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(tmp);
             while (matcher.find()) {
                 String urlToFind = matcher.group();
-                if ((urlToFind.contains(".png")) || urlToFind.contains(".js") || urlToFind.contains(".jpeg") ||
-                        urlToFind.contains(".css") || urlToFind.contains(".jpg") || urlToFind.contains(".xml") || urlToFind.contains(".dtd")) {
+                if ((urlToFind.contains(".png")) || urlToFind.contains(".js") || urlToFind.contains(".jpeg") || urlToFind.contains(".css")
+                        || urlToFind.contains(".jpg") || urlToFind.contains(".xml") || urlToFind.contains(".dtd")) {
                     continue;
                 }
                 if (!marked.containsKey(urlToFind)) {
                     int level = marked.get(crawledUrl) + 1;
                     marked.put(urlToFind, level);
-                    System.out.println("site added :" + urlToFind);
+//                    System.out.println("site added :" + urlToFind);
                     queue.add(urlToFind);
                 }
             }
@@ -95,6 +95,7 @@ public class Crawler {
         System.out.println("\n\nResults");
         System.out.println("web sites crawled: " + marked.size() + "\n");
         System.out.println("url visited " + crawledCount);
+        System.out.println("amount "+ amountOfTermPerUrl.size());
 //        for (String s : marked) {
 //            System.out.println("* " + s);
 //        }
@@ -102,19 +103,27 @@ public class Crawler {
         ) {
             System.out.println(entry.getKey() + "\t\t\t" + entry.getValue());
         }
+        for (Map.Entry<Integer, String> entry : amountOfTermPerUrl.entrySet()
+        ) {
+            System.out.println(entry.getKey() + "\t\t\t" + entry.getValue());
+        }
     }
 
-    public static void searchTerms(String text, String[] terms) {
+    public static Integer searchTerms(String text, String[] terms) {
+        Integer countOfTerms = 0;
         for (String term : terms) {
             Pattern pattern = Pattern.compile(term);
             Matcher matcher = pattern.matcher(text);
+
             while (matcher.find()) {
+                countOfTerms++;
                 if (termMap.containsKey(term))
                     termMap.put(term, termMap.get(term) + 1);
                 else
                     termMap.put(term, 1);
             }
         }
+        return countOfTerms;
     }
 
     public static void main(String[] args) {
