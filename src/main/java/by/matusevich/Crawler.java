@@ -1,11 +1,11 @@
 package by.matusevich;
 
-import java.io.BufferedReader;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
-import java.net.URL;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,66 +14,57 @@ public class Crawler {
     private static final int URL_LIMIT = 100;
     private static final int DEPTH_LIMIT = 3;
 
-    public static Queue<String> queue = new LinkedList<>();
-    public static Map<String, Integer> marked = new HashMap<>();
+    private Queue<String> queue = new LinkedList<>();
+    private Map<String, Integer> marked = new HashMap<>();
 
-    public static String regex = "\\b(https?|ftp)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
+    private static String[] terms = new String[]{"Java", "regex"};
+//    private static String[] terms = new String[]{"Tesla", "Musk", "Gigafactory", "Elon Mask"};
 
-    public static String[] terms = new String[]{"Java", "regex"};
-    public static Map<String, Integer> termMap = new HashMap<>();
-    public static Map<Integer, String> amountOfTermPerUrl = new TreeMap<>();
+    private static Map<String, Integer> termMap = new HashMap<>();
+    private Map<Integer, String> amountOfTermPerUrl = new TreeMap<>();
+
+    private Map<String, ArrayList<Integer>> arrayOfTermsPerUrl = new HashMap<>();
+    private int[] top10 = new int[10];
+
     static int crawledCount = 0;
 
-    public static void crawl(String initialSeedUrl) throws IOException {
+    public void crawl(String initialSeedUrl) {
         queue.add(initialSeedUrl);
         marked.put(initialSeedUrl, 1);
-        BufferedReader br = null;
+        arrayOfTermsPerUrl.put(initialSeedUrl, new ArrayList<>(terms.length));
 
         while (!queue.isEmpty() && crawledCount <= URL_LIMIT) {
             crawledCount++;
             String crawledUrl = queue.poll();
             System.out.println("\n=== Site crawled on level: " + marked.get(crawledUrl) + " " + crawledUrl + " ===");
 
-            boolean ok = false;
-            while (!ok) {
-                try {
-                    URL url = new URL(crawledUrl);
-//                    url.openConnection().setConnectTimeout(3000);
-                    br = new BufferedReader(new InputStreamReader(url.openStream()));
-                    ok = true;
-                } catch (SocketTimeoutException e) {
-                    System.out.println("*** SocketTimeoutException URL : " + crawledUrl);
-                    crawledUrl = queue.poll();
-                    ok = false;
-                } catch (MalformedURLException e) {
-                    System.out.println("*** Malformed URL : " + crawledUrl);
-                    crawledUrl = queue.poll();
-                    ok = false;
-                } catch (IOException e) {
-                    System.out.println("*** IOException URL : " + crawledUrl);
-                    crawledUrl = queue.poll();
-                    ok = false;
-                }
+            Document site = null;
+            try {
+                site = Jsoup.connect(crawledUrl).get();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Elements links = site.select("a[href]");
+            String siteText = site.wholeText();
+
+            ArrayList<Integer> integers = new ArrayList<>();
+            for (String term : terms
+            ) {
+                integers.add(searchOnlyOneTerm(siteText, term));
+            }
+            int sum = 0;
+            for (Integer i : integers
+            ) {
+                sum += i;
             }
 
-            StringBuilder sb = new StringBuilder();
-            String tmp = null;
-
-            while ((tmp = br.readLine()) != null) {
-                sb.append(tmp);
-            }
-            tmp = sb.toString();
-
-            amountOfTermPerUrl.put(searchTerms(tmp, terms),crawledUrl);
+            arrayOfTermsPerUrl.put(crawledUrl, integers);
 
             if (marked.get(crawledUrl) == DEPTH_LIMIT) {
-//                System.out.println("limit");
                 continue;
             }
-            Pattern pattern = Pattern.compile(regex);
-            Matcher matcher = pattern.matcher(tmp);
-            while (matcher.find()) {
-                String urlToFind = matcher.group();
+            for (Element link : links) {
+                String urlToFind = link.attr("abs:href");
                 if ((urlToFind.contains(".png")) || urlToFind.contains(".js") || urlToFind.contains(".jpeg") || urlToFind.contains(".css")
                         || urlToFind.contains(".jpg") || urlToFind.contains(".xml") || urlToFind.contains(".dtd")) {
                     continue;
@@ -81,63 +72,53 @@ public class Crawler {
                 if (!marked.containsKey(urlToFind)) {
                     int level = marked.get(crawledUrl) + 1;
                     marked.put(urlToFind, level);
-//                    System.out.println("site added :" + urlToFind);
                     queue.add(urlToFind);
                 }
             }
         }
-        if (br != null) {
-            br.close();
-        }
     }
 
-    public static void showResults() {
-        System.out.println("\n\nResults");
-        System.out.println("web sites crawled: " + marked.size() + "\n");
-        System.out.println("url visited " + crawledCount);
-        System.out.println("amount "+ amountOfTermPerUrl.size());
-//        for (String s : marked) {
-//            System.out.println("* " + s);
-//        }
+    public void showResults() {
+        String sb = "\n\nResults" +
+                "\n\tweb sites crawled: " + marked.size() + "\n" +
+                "\turl visited " + crawledCount +
+                "\n\tamount " + amountOfTermPerUrl.size();
+        System.out.println(sb);
         for (Map.Entry<String, Integer> entry : termMap.entrySet()
         ) {
             System.out.println(entry.getKey() + "\t\t\t" + entry.getValue());
         }
-        for (Map.Entry<Integer, String> entry : amountOfTermPerUrl.entrySet()
+
+        for (Map.Entry<String, ArrayList<Integer>> entry : arrayOfTermsPerUrl.entrySet()
         ) {
-            System.out.println(entry.getKey() + "\t\t\t" + entry.getValue());
+            System.out.print(entry.getKey());
+            entry.getValue().forEach(i -> System.out.print("\t" + i));
+            System.out.println();
+
         }
     }
 
-    public static Integer searchTerms(String text, String[] terms) {
-        Integer countOfTerms = 0;
-        for (String term : terms) {
-            Pattern pattern = Pattern.compile(term);
-            Matcher matcher = pattern.matcher(text);
-
-            while (matcher.find()) {
-                countOfTerms++;
-                if (termMap.containsKey(term))
-                    termMap.put(term, termMap.get(term) + 1);
-                else
-                    termMap.put(term, 1);
-            }
+    public static int searchOnlyOneTerm(String text, String term) {
+        Pattern pattern = Pattern.compile(term);
+        Matcher matcher = pattern.matcher(text);
+        int countOfTerm = 0;
+        while (matcher.find()) {
+            countOfTerm++;
+            if (termMap.containsKey(term))
+                termMap.put(term, termMap.get(term) + 1);
+            else
+                termMap.put(term, 1);
         }
-        return countOfTerms;
+        return countOfTerm;
     }
 
     public static void main(String[] args) {
-        try {
-            long startTime = System.currentTimeMillis();
-            crawl("https://www.javatpoint.com/java-regex");
+        long startTime = System.currentTimeMillis();
+        Crawler crawler = new Crawler();
+        crawler.crawl("https://www.javatpoint.com/java-regex");
 //            crawl("https://en.wikipedia.org/wiki/Elon_Musk");
-            long stopTime = System.currentTimeMillis();
-            System.out.println(stopTime - startTime);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        showResults();
-//        printCsv(termMap);
+        crawler.showResults();
+        long stopTime = System.currentTimeMillis();
+        System.out.println(stopTime - startTime);
     }
-
 }
