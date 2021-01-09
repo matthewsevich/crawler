@@ -4,6 +4,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -14,57 +16,61 @@ public class Crawler {
     private static final int URL_LIMIT = 100;
     private static final int DEPTH_LIMIT = 3;
 
+    private static final Logger logger = LoggerFactory.getLogger(Crawler.class);
     private Queue<String> queue = new LinkedList<>();
     private Map<String, Integer> marked = new HashMap<>();
 
-    private static String[] terms = new String[]{"Java", "regex"};
-//    private static String[] terms = new String[]{"Tesla", "Musk", "Gigafactory", "Elon Mask"};
+    //    private static String[] terms = new String[]{"Java", "regex", "java", "Regex"};
+    private static String[] terms = new String[]{"Tesla", "Musk", "Gigafactory", "Elon Mask"};
 
     private static Map<String, Integer> termMap = new HashMap<>();
-    private Map<Integer, String> amountOfTermPerUrl = new TreeMap<>();
 
     private Map<String, ArrayList<Integer>> arrayOfTermsPerUrl = new HashMap<>();
-    private int[] top10 = new int[10];
+//    private List<Integer> top10 = new ArrayList<>();
+//    private Map<String, Integer> top10AnimeBattles = new HashMap<>();
 
     static int crawledCount = 0;
 
     public void crawl(String initialSeedUrl) {
-        queue.add(initialSeedUrl);
+        queue.offer(initialSeedUrl);
         marked.put(initialSeedUrl, 1);
         arrayOfTermsPerUrl.put(initialSeedUrl, new ArrayList<>(terms.length));
+        logger.info("process started");
 
         while (!queue.isEmpty() && crawledCount <= URL_LIMIT) {
             crawledCount++;
             String crawledUrl = queue.poll();
-            System.out.println("\n=== Site crawled on level: " + marked.get(crawledUrl) + " " + crawledUrl + " ===");
+//            logger.info(String.format("%n=== Site crawled on level: %d %s ===", marked.get(crawledUrl), crawledUrl));
 
             Document site = null;
             try {
                 site = Jsoup.connect(crawledUrl).get();
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error(e.getMessage());
+            }
+            if (site == null) {
+                logger.error("site == null");
+                continue;
             }
             Elements links = site.select("a[href]");
-            String siteText = site.wholeText();
 
-            ArrayList<Integer> integers = new ArrayList<>();
+            String siteText = site.text();
+
+            ArrayList<Integer> numbersOfTermsFound = new ArrayList<>();
             for (String term : terms
             ) {
-                integers.add(searchOnlyOneTerm(siteText, term));
-            }
-            int sum = 0;
-            for (Integer i : integers
-            ) {
-                sum += i;
+                numbersOfTermsFound.add(searchOnlyOneTerm(siteText, term));
             }
 
-            arrayOfTermsPerUrl.put(crawledUrl, integers);
+            arrayOfTermsPerUrl.put(crawledUrl, numbersOfTermsFound);
 
             if (marked.get(crawledUrl) == DEPTH_LIMIT) {
                 continue;
             }
             for (Element link : links) {
                 String urlToFind = link.attr("abs:href");
+
+//                logger.info(getHostName(urlToFind));
                 if ((urlToFind.contains(".png")) || urlToFind.contains(".js") || urlToFind.contains(".jpeg") || urlToFind.contains(".css")
                         || urlToFind.contains(".jpg") || urlToFind.contains(".xml") || urlToFind.contains(".dtd")) {
                     continue;
@@ -79,18 +85,16 @@ public class Crawler {
     }
 
     public void showResults() {
-        String sb = "\n\nResults" +
+        String result = "\n\nResults" +
                 "\n\tweb sites crawled: " + marked.size() + "\n" +
-                "\turl visited " + crawledCount +
-                "\n\tamount " + amountOfTermPerUrl.size();
-        System.out.println(sb);
-        for (Map.Entry<String, Integer> entry : termMap.entrySet()
-        ) {
-            System.out.println(entry.getKey() + "\t\t\t" + entry.getValue());
+                "\turl visited " + crawledCount;
+        logger.info(result);
+
+        for (Map.Entry<String, Integer> entry : termMap.entrySet()) {
+            logger.info(entry.getKey() + "\t\t\t" + entry.getValue());
         }
 
-        for (Map.Entry<String, ArrayList<Integer>> entry : arrayOfTermsPerUrl.entrySet()
-        ) {
+        for (Map.Entry<String, ArrayList<Integer>> entry : arrayOfTermsPerUrl.entrySet()) {
             System.out.print(entry.getKey());
             entry.getValue().forEach(i -> System.out.print("\t" + i));
             System.out.println();
@@ -108,6 +112,7 @@ public class Crawler {
                 termMap.put(term, termMap.get(term) + 1);
             else
                 termMap.put(term, 1);
+
         }
         return countOfTerm;
     }
@@ -115,10 +120,10 @@ public class Crawler {
     public static void main(String[] args) {
         long startTime = System.currentTimeMillis();
         Crawler crawler = new Crawler();
-        crawler.crawl("https://www.javatpoint.com/java-regex");
-//            crawl("https://en.wikipedia.org/wiki/Elon_Musk");
+//        crawler.crawl("https://www.javatpoint.com/java-regex");
+        crawler.crawl("https://en.wikipedia.org/wiki/Elon_Musk");
         crawler.showResults();
-        long stopTime = System.currentTimeMillis();
-        System.out.println(stopTime - startTime);
+        long finalTime = System.currentTimeMillis() - startTime;
+        System.out.println("completed " + finalTime);
     }
 }
