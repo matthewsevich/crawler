@@ -19,3 +19,7 @@
 //todo сделать тесты
 
 //todo jsoup???
+
+
+
+ResultsOfParsing results = new ResultsOfParsing(result, termCount, top10values, top10names);
