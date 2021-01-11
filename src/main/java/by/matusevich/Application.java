@@ -1,5 +1,6 @@
 package by.matusevich;
 
+import by.matusevich.crawler.Crawler;
 import by.matusevich.csv.CsvWriter;
 import by.matusevich.model.ResultsOfParsing;
 import by.matusevich.model.ResultsOfParsingTop10;
@@ -16,7 +17,7 @@ public class Application {
         Crawler crawler = new Crawler();
         crawler.crawl(url, terms);
         ResultsOfParsing results = crawler.getAllResults();
-        ResultsOfParsingTop10 top10 = crawler.top10ResultsToString();
+        ResultsOfParsingTop10 top10 = crawler.top10ResultsToString(crawler.getTop10names(),crawler.getListOfTermsPerUrl());
         long finalTime = System.currentTimeMillis() - startTime;
         CsvWriter.saveResults(results, "result.csv");
         CsvWriter.saveResults(top10, "top10.csv");

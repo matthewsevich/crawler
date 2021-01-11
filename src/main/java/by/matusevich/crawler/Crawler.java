@@ -1,4 +1,4 @@
-package by.matusevich;
+package by.matusevich.crawler;
 
 import by.matusevich.model.ResultsOfParsing;
 import by.matusevich.model.ResultsOfParsingTop10;
@@ -67,10 +67,12 @@ public class Crawler {
                 continue;
             }
             searchUrls(links, currentDepth);
+
         }
     }
 
-    public void searchUrls(Elements links, int currentDepth) {
+    public List<String> searchUrls(Elements links, int currentDepth) {
+        List<String> listOfUrls = new ArrayList<>();
         for (Element link : links) {
             String urlToFind = link.attr("abs:href");
 
@@ -80,10 +82,12 @@ public class Crawler {
             }
             if (!marked.containsKey(urlToFind)) {
                 int level = currentDepth + 1;
+                listOfUrls.add(urlToFind);
                 marked.put(urlToFind, level);
                 queue.add(urlToFind);
             }
         }
+        return listOfUrls;
     }
 
     public void getTop10Results(Map<String, ArrayList<Integer>> fullMap) {
@@ -107,20 +111,22 @@ public class Crawler {
         }
     }
 
-    public void sortArrayLists(List<Integer> values, List<String> names) {
+    public List<String> sortArrayLists(List<Integer> values, List<String> names) {
         ArrayList<Integer> newValues = new ArrayList<>(values);
         ArrayList<String> newNames = new ArrayList<>(names);
-        for (int i = 0; i <= 9; i++) {
+        int size = values.size();
+        for (int i = 0; i < size; i++) {
             int indexOfMinValueFromTop10 = getIndexOfMinValueFromTop10(values);
             int minValue = values.get(indexOfMinValueFromTop10);
             String minName = names.get(indexOfMinValueFromTop10);
-            newValues.set(9 - i, minValue);
-            newNames.set(9 - i, minName);
+            newValues.set(size - 1 - i, minValue);
+            newNames.set(size - 1 - i, minName);
             values.remove(indexOfMinValueFromTop10);
             names.remove(indexOfMinValueFromTop10);
         }
         top10names = newNames;
         top10values = newValues;
+        return top10names;
     }
 
     public int getIndexOfMinValueFromTop10(List<Integer> top10values) {
@@ -147,7 +153,7 @@ public class Crawler {
 
         getTop10Results(listOfTermsPerUrl);
         sortArrayLists(top10values, top10names);
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < top10names.size(); i++) {
             System.out.println(top10names.get(i) + " " + listOfTermsPerUrl.get(top10names.get(i)));
         }
         return new ResultsOfParsing(result, termCount, listOfTermsPerUrl);
@@ -155,7 +161,7 @@ public class Crawler {
 
     public ResultsOfParsingTop10 top10ResultsToString(List<String> nameList, Map<String, ArrayList<Integer>> mapWithArrayList) {
         List<String> top10InStringView = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < nameList.size(); i++) {
             String name = nameList.get(i);
             top10InStringView.add(name + " " + mapWithArrayList.get(name));
         }
@@ -175,4 +181,17 @@ public class Crawler {
         }
         return countOfTerm;
     }
+
+    public List<Integer> getTop10values() {
+        return top10values;
+    }
+
+    public List<String> getTop10names() {
+        return top10names;
+    }
+
+    public Map<String, ArrayList<Integer>> getListOfTermsPerUrl() {
+        return listOfTermsPerUrl;
+    }
+
 }

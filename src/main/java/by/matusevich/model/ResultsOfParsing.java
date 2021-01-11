@@ -11,6 +11,9 @@ public class ResultsOfParsing implements Serializable {
 
     private Map<String, ArrayList<Integer>> allStatistics;
 
+    public ResultsOfParsing() {
+    }
+
     public ResultsOfParsing(String pageParsed, String termsCount, Map<String, ArrayList<Integer>> allStatistics) {
         this.pageParsed = pageParsed;
         this.termsCount = termsCount;
