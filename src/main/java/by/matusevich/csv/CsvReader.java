@@ -1,10 +1,13 @@
-package by.matusevich;
+package by.matusevich.csv;
+
+import by.matusevich.model.ResultsOfParsing;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 
 public class CsvReader {
+
     public static ResultsOfParsing readResultsCsv(String filename) {
 
         ResultsOfParsing results = null;

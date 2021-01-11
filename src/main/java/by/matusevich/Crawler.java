@@ -1,5 +1,7 @@
 package by.matusevich;
 
+import by.matusevich.model.ResultsOfParsing;
+import by.matusevich.model.ResultsOfParsingTop10;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -15,28 +17,20 @@ import java.util.regex.Pattern;
 public class Crawler {
     private static final int URL_LIMIT = 100;
     private static final int DEPTH_LIMIT = 5;
-    private static final String INITIAL_SEED_URL = "https://www.javatpoint.com/java-regex";
-//    private static final String INITIAL_SEED_URL= "https://en.wikipedia.org/wiki/Elon_Musk";
 
     private static final Logger logger = LoggerFactory.getLogger(Crawler.class);
     private Queue<String> queue = new LinkedList<>();
     private Map<String, Integer> marked = new HashMap<>();
-
-    private static String url = CrawlerConsoleReader.readUrl();
-    private String[] terms = CrawlerConsoleReader.readTerms();
-//    private static String[] terms = new String[]{"Java", "regex", "java", "Regex"};
-//    private static String[] terms = new String[]{"Tesla", "Musk", "Gigafactory", "Elon Mask"};
 
     private static Map<String, Integer> termMap = new HashMap<>();
 
     private static Map<String, ArrayList<Integer>> listOfTermsPerUrl = new HashMap<>();
     private List<Integer> top10values = new ArrayList<>();
     private List<String> top10names = new ArrayList<>();
-//    private Map<String, Integer> top10AnimeBattles = new HashMap<>();
 
     int crawledCount = 0;
 
-    public void crawl(String initialSeedUrl) {
+    public void crawl(String initialSeedUrl, String[] terms) {
         queue.offer(initialSeedUrl);
         marked.put(initialSeedUrl, 0);
         listOfTermsPerUrl.put(initialSeedUrl, new ArrayList<>(terms.length));
@@ -46,7 +40,6 @@ public class Crawler {
             crawledCount++;
             String crawledUrl = queue.poll();
             int currentDepth = marked.get(crawledUrl);
-//            logger.info(String.format("%n=== Site crawled on level: %d %s ===", currentDepth, crawledUrl));
 
             Document site = null;
             try {
@@ -81,13 +74,10 @@ public class Crawler {
         for (Element link : links) {
             String urlToFind = link.attr("abs:href");
 
-//                logger.info(getHostName(urlToFind));
             if ((urlToFind.contains(".png")) || urlToFind.contains(".js") || urlToFind.contains(".jpeg") || urlToFind.contains(".css")
                     || urlToFind.contains(".jpg") || urlToFind.contains(".xml") || urlToFind.contains(".dtd")) {
                 continue;
             }
-            Map<Integer, String> map = new TreeMap<>();
-            map.keySet();
             if (!marked.containsKey(urlToFind)) {
                 int level = currentDepth + 1;
                 marked.put(urlToFind, level);
@@ -117,7 +107,7 @@ public class Crawler {
         }
     }
 
-    private void sortArrayLists(List<Integer> values, List<String> names) {
+    public void sortArrayLists(List<Integer> values, List<String> names) {
         ArrayList<Integer> newValues = new ArrayList<>(values);
         ArrayList<String> newNames = new ArrayList<>(names);
         for (int i = 0; i <= 9; i++) {
@@ -128,17 +118,12 @@ public class Crawler {
             newNames.set(9 - i, minName);
             values.remove(indexOfMinValueFromTop10);
             names.remove(indexOfMinValueFromTop10);
-
         }
-//        for (int i = 0; i < 9; i++) {
-//            top10values.set(i, newValues.get(i));
-//            top10names.set(i,newNames.get(i));
-//        }
         top10names = newNames;
         top10values = newValues;
     }
 
-    private int getIndexOfMinValueFromTop10(List<Integer> top10values) {
+    public int getIndexOfMinValueFromTop10(List<Integer> top10values) {
         int minValue = top10values.get(0);
         for (Integer i : top10values
         ) {
@@ -165,17 +150,17 @@ public class Crawler {
         for (int i = 0; i < 10; i++) {
             System.out.println(top10names.get(i) + " " + listOfTermsPerUrl.get(top10names.get(i)));
         }
-        return new ResultsOfParsing(result, termCount, top10values, top10names);
-
-
-//        for (Map.Entry<String, ArrayList<Integer>> entry : listOfTermsPerUrl.entrySet()) {
-//            System.out.print(entry.getKey());
-//            entry.getValue().forEach(i -> System.out.print("\t" + i));
-//            System.out.println();
-//
-//        }
+        return new ResultsOfParsing(result, termCount, listOfTermsPerUrl);
     }
 
+    public ResultsOfParsingTop10 top10ResultsToString(List<String> nameList, Map<String, ArrayList<Integer>> mapWithArrayList) {
+        List<String> top10InStringView = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            String name = nameList.get(i);
+            top10InStringView.add(name + " " + mapWithArrayList.get(name));
+        }
+        return new ResultsOfParsingTop10(top10InStringView);
+    }
 
     public static int searchOnlyOneTerm(String text, String term) {
         Pattern pattern = Pattern.compile(term);
@@ -189,16 +174,5 @@ public class Crawler {
                 termMap.put(term, 1);
         }
         return countOfTerm;
-    }
-
-    public static void main(String[] args) {
-        long startTime = System.currentTimeMillis();
-        Crawler crawler = new Crawler();
-        crawler.crawl(url);
-        ResultsOfParsing results = crawler.getAllResults();
-        long finalTime = System.currentTimeMillis() - startTime;
-        System.out.println("completed " + finalTime);
-        CsvWriter.saveResults(results, "result.csv");
-        CsvWriter.saveStatistics(listOfTermsPerUrl, "statistics.csv");
     }
 }

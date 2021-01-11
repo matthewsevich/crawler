@@ -1,4 +1,4 @@
-package by.matusevich;
+package by.matusevich.utility;
 
 import java.util.Scanner;
 

@@ -1,15 +1,16 @@
-package by.matusevich;
+package by.matusevich.csv;
+
+import by.matusevich.model.ResultsOfParsing;
+import by.matusevich.model.ResultsOfParsingTop10;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.util.ArrayList;
-import java.util.Map;
 
-public class CsvWriter {
+public class CsvWriter{
 
-    public static void saveResults(ResultsOfParsing results,String filename) {
+    public static void saveResults(ResultsOfParsing results, String filename) {
         FileOutputStream fos = null;
 
         try {
@@ -28,7 +29,7 @@ public class CsvWriter {
         }
     }
 
-    public static void saveStatistics(Map<String, ArrayList<Integer>> map,String filename) {
+    public static void saveResults(ResultsOfParsingTop10 results, String filename) {
         FileOutputStream fos = null;
 
         try {
@@ -39,13 +40,11 @@ public class CsvWriter {
 
         try (ObjectOutputStream oos = new ObjectOutputStream(fos)) {
 
-            oos.writeObject(map);
+            oos.writeObject(results);
             oos.flush();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
-
 }
